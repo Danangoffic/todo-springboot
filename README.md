@@ -24,12 +24,18 @@ A comprehensive RESTful API for managing todos with advanced features including 
 - Lombok
 - JWT for authentication
 - Hibernate Validator
+- Docker & Docker Compose
+- Kubernetes
+- Redis (for session management)
+- Spring Boot Actuator (for monitoring)
 
 ## Prerequisites
 
 - Java 17 or higher
 - MySQL 8.0 or higher
 - Maven 3.6 or higher
+- Docker and Docker Compose (for containerized deployment)
+- kubectl (for Kubernetes deployment)
 
 ## Installation
 
@@ -56,6 +62,157 @@ A comprehensive RESTful API for managing todos with advanced features including 
    mvn clean install
    mvn spring-boot:run
    ```
+
+## Docker Deployment
+
+### Quick Start with Docker Compose (Recommended for Development)
+
+1. **Start all services** (MySQL, Redis, and Todo App):
+   ```bash
+   docker-compose up -d
+   ```
+
+2. **Check the status**:
+   ```bash
+   docker-compose ps
+   ```
+
+3. **View logs**:
+   ```bash
+   docker-compose logs -f todo-app
+   ```
+
+4. **Stop all services**:
+   ```bash
+   docker-compose down
+   ```
+
+5. **Stop and remove volumes** (cleans up database):
+   ```bash
+   docker-compose down -v
+   ```
+
+### Access the Application
+
+- **Main Application**: http://localhost:8080
+- **Health Check**: http://localhost:8081/actuator/health
+- **Application Info**: http://localhost:8081/actuator/info
+- **Metrics**: http://localhost:8081/actuator/metrics
+- **Prometheus Metrics**: http://localhost:8081/actuator/prometheus
+
+### Docker Services
+
+The `docker-compose.yml` includes:
+
+- **todo-app**: Spring Boot application (ports 8080, 8081)
+- **mysql**: MySQL 8.0 database (port 3306)
+- **redis**: Redis cache for sessions (port 6379)
+- **nginx**: Reverse proxy (ports 80, 443) - optional
+
+### Manual Docker Build
+
+If you want to build and run the Docker image manually:
+
+1. **Build the Docker image**:
+   ```bash
+   docker build -t todo-app:latest .
+   ```
+
+2. **Run with MySQL**:
+   ```bash
+   docker run -d --name mysql \
+     -e MYSQL_ROOT_PASSWORD=password \
+     -e MYSQL_DATABASE=todo_list \
+     -p 3306:3306 \
+     mysql:8.0
+   ```
+
+3. **Run the application**:
+   ```bash
+   docker run -d --name todo-app \
+     --link mysql:mysql \
+     -p 8080:8080 \
+     -p 8081:8081 \
+     -e DB_URL=jdbc:mysql://mysql:3306/todo_list?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true \
+     -e DB_USERNAME=root \
+     -e DB_PASSWORD=password \
+     todo-app:latest
+   ```
+
+### Docker Environment Variables
+
+| Variable | Description | Default Value |
+|----------|-------------|---------------|
+| `SPRING_PROFILES_ACTIVE` | Spring profile | `docker` |
+| `DB_URL` | Database URL | MySQL container URL |
+| `DB_USERNAME` | Database username | `todo_user` |
+| `DB_PASSWORD` | Database password | `todo_password` |
+| `JWT_SECRET` | JWT signing secret | `myDockerSecretKey` |
+| `REDIS_HOST` | Redis host | `redis` |
+| `REDIS_PORT` | Redis port | `6379` |
+
+## Kubernetes Deployment
+
+### Prerequisites for Kubernetes
+
+- Access to a Kubernetes cluster (Minikube, Docker Desktop, or cloud provider)
+- kubectl configured and working
+- Ingress controller (nginx) installed
+
+### Quick Deployment
+
+1. **Deploy to Kubernetes**:
+   ```bash
+   ./scripts/build-and-deploy.sh
+   ```
+
+2. **Monitor deployment**:
+   ```bash
+   ./scripts/monitor.sh
+   ```
+
+3. **Access the application**:
+   ```bash
+   # Get external IP (if using LoadBalancer)
+   kubectl get service todo-app-service -n todo-app
+
+   # Or use port forwarding
+   kubectl port-forward service/todo-app-service 8080:80 -n todo-app
+   ```
+
+### Kubernetes Resources
+
+- **Namespace**: `todo-app`
+- **Replicas**: 2-10 (auto-scaling)
+- **Database**: MySQL with persistent storage
+- **Monitoring**: Health checks and metrics
+- **Ingress**: External access configuration
+
+### Custom Kubernetes Deployment
+
+1. **Update secrets** in `k8s/secret.yaml`:
+   ```bash
+   echo -n "your_mysql_password" | base64
+   echo -n "your_jwt_secret" | base64
+   ```
+
+2. **Apply manifests manually**:
+   ```bash
+   kubectl apply -f k8s/namespace.yaml
+   kubectl apply -f k8s/secret.yaml -n todo-app
+   kubectl apply -f k8s/configmap.yaml -n todo-app
+   kubectl apply -f k8s/mysql-deployment.yaml -n todo-app
+   kubectl apply -f k8s/app-deployment.yaml -n todo-app
+   kubectl apply -f k8s/hpa.yaml -n todo-app
+   kubectl apply -f k8s/ingress.yaml -n todo-app
+   ```
+
+3. **Cleanup**:
+   ```bash
+   ./scripts/teardown.sh
+   ```
+
+For detailed Kubernetes deployment instructions, see [KUBERNETES_DEPLOYMENT.md](KUBERNETES_DEPLOYMENT.md).
 
 ## API Endpoints
 
